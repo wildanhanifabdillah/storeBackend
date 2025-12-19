@@ -8,6 +8,7 @@ import (
 	"github.com/wildanhanifabdillah/storeBackend/internal/config"
 	"github.com/wildanhanifabdillah/storeBackend/internal/database"
 	"github.com/wildanhanifabdillah/storeBackend/internal/routes"
+	"github.com/wildanhanifabdillah/storeBackend/internal/services"
 )
 
 func main() {
@@ -18,10 +19,17 @@ func main() {
 	// 2️⃣ Init database
 	db := database.InitDB()
 
-	// 3️⃣ Init Gin
+	// 3️⃣ Init Redis (queue email)
+	// Aman walau Redis belum hidup (nanti via Docker)
+	services.InitRedis()
+
+	// 4️⃣ Start email worker (async)
+	services.StartEmailWorker()
+
+	// 5️⃣ Init Gin
 	r := gin.Default()
 
-	// 4️⃣ Register routes
+	// 6️⃣ Register routes
 	routes.RegisterRoutes(r, db)
 
 	// 5️⃣ Run server

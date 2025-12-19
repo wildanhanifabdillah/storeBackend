@@ -150,15 +150,16 @@ func MidtransCallback(db *gorm.DB) gin.HandlerFunc {
 				log.Println("failed generate invoice:", err)
 			}
 
-			// 📧 Send Email + ATTACH Invoice
-			if err := services.SendPaymentSuccessEmailWithInvoice(
-				tx.Email,
-				tx.OrderID,
-				tx.TotalAmount,
-				invoicePath,
-			); err != nil {
-				log.Println("failed send email:", err)
+			// 📬 Enqueue email job (ASYNC via Redis)
+			if err := services.EnqueueEmail(services.EmailJob{
+				To:          tx.Email,
+				OrderID:     tx.OrderID,
+				Amount:      tx.TotalAmount,
+				InvoicePath: invoicePath,
+			}); err != nil {
+				log.Println("failed enqueue email:", err)
 			}
+
 		}
 
 		// ===============================
