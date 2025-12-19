@@ -1,41 +1,53 @@
 package services
 
 import (
-	"fmt"
-	"net/smtp"
 	"os"
+	"strconv"
+
+	"gopkg.in/gomail.v2"
 )
 
-func SendPaymentSuccessEmail(to string, orderID string, amount int64) error {
-	from := os.Getenv("SMTP_EMAIL")
-	password := os.Getenv("SMTP_PASSWORD")
+func SendPaymentSuccessEmailWithInvoice(
+	to string,
+	orderID string,
+	amount int64,
+	invoicePath string,
+) error {
 
-	host := os.Getenv("SMTP_HOST")
-	port := os.Getenv("SMTP_PORT")
+	m := gomail.NewMessage()
+	m.SetHeader("From", os.Getenv("SMTP_EMAIL"))
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", "Payment Successful - Wildan Store")
 
-	subject := "Payment Successful - Wildan Store"
-
-	body := fmt.Sprintf(`
+	body := `
 Hi,
 
 Your payment has been successfully processed.
 
-Order ID : %s
-Total    : Rp %d
+Order ID : ` + orderID + `
+Total    : Rp ` + strconv.FormatInt(amount, 10) + `
 Status   : PAID
 
-Thank you for using Wildan Store.
-`, orderID, amount)
+Please find your invoice attached.
 
-	message := []byte(
-		"From: " + from + "\r\n" +
-			"To: " + to + "\r\n" +
-			"Subject: " + subject + "\r\n\r\n" +
-			body,
+Thank you,
+Wildan Store
+`
+	m.SetBody("text/plain", body)
+
+	// 📎 ATTACH INVOICE PDF
+	if invoicePath != "" {
+		m.Attach(invoicePath)
+	}
+
+	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
+
+	d := gomail.NewDialer(
+		os.Getenv("SMTP_HOST"),
+		port,
+		os.Getenv("SMTP_EMAIL"),
+		os.Getenv("SMTP_PASSWORD"),
 	)
 
-	auth := smtp.PlainAuth("", from, password, host)
-	addr := host + ":" + port
-
-	return smtp.SendMail(addr, auth, from, []string{to}, message)
+	return d.DialAndSend(m)
 }

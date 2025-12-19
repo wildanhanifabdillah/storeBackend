@@ -6,24 +6,11 @@ import (
 
 	"github.com/wildanhanifabdillah/storeBackend/internal/handlers"
 	"github.com/wildanhanifabdillah/storeBackend/internal/middlewares"
-	"github.com/wildanhanifabdillah/storeBackend/internal/services"
 )
 
 func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
-	// 🔥 TEST EMAIL (LOCAL ONLY)
-	r.GET("/test-email", func(c *gin.Context) {
-		err := services.SendPaymentSuccessEmail(
-			"wildanhanifabdillah27@gmail.com",
-			"TEST-LOCAL",
-			20000,
-		)
-		if err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(200, gin.H{"message": "email sent"})
-	})
+	r.GET("/health", handlers.HealthCheck())
 
 	api := r.Group("/api/v1")
 
@@ -43,4 +30,6 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 	admin.Use(middlewares.AuthMiddleware())
 	admin.GET("/transactions", handlers.AdminGetTransactions(db))
 	admin.POST("/games", handlers.CreateGame(db))
+	admin.GET("/invoices/:order_id", handlers.AdminDownloadInvoice())
+
 }
