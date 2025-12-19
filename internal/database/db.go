@@ -20,20 +20,24 @@ func InitDB() *gorm.DB {
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("failed to connect database")
+		log.Fatal("failed to connect database: ", err)
 	}
 
 	// 🔥 Auto Migration
-	err = db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&models.Admin{},
 		&models.Game{},
 		&models.TopupPackage{},
 		&models.Transaction{},
 		&models.Payment{},
-	)
-	if err != nil {
-		log.Fatal("failed to migrate database")
+	); err != nil {
+		log.Fatal("failed to migrate database: ", err)
 	}
+
+	// 🌱 Seed initial data
+	Seed(db)
+
+	log.Println("Database connected, migrated, and seeded successfully")
 
 	return db
 }
