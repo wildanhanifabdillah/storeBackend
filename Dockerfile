@@ -1,14 +1,14 @@
-# =========================
-# 1️⃣ BUILD STAGE
-# =========================
-FROM golang:1.22-alpine AS builder
+# ======================
+# Build stage
+# ======================
+FROM golang:1.25.4-alpine AS builder
+
+# Install build deps (wajib di alpine)
+RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache git
-
-# Copy go mod files
+# Cache dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -19,25 +19,21 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -o app ./cmd/server
 
+# ======================
+# Runtime stage
+# ======================
+FROM alpine:3.20
 
-# =========================
-# 2️⃣ RUNTIME STAGE
-# =========================
-FROM alpine:3.19
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 
-# Install CA cert (important for SMTP, HTTPS, Midtrans)
-RUN apk add --no-cache ca-certificates
+COPY --from=builder /app/app /app/app
 
-# Copy binary
-COPY --from=builder /app/app .
-
-# Create invoices dir
-RUN mkdir -p invoices
-
-# Expose port
 EXPOSE 8080
 
-# Run app
-CMD ["./app"]
+# Non-root user (security best practice)
+RUN adduser -D appuser
+USER appuser
+
+ENTRYPOINT ["/app/app"]
