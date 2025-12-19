@@ -2,13 +2,16 @@ name: Go CI/CD Pipeline (Postgres + Redis)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+
+env:
+  IMAGE_NAME: ghcr.io/wildanhanifabdillah/storebackend
 
 jobs:
   # =========================
-  # 1️⃣ BUILD, TEST, DB, REDIS
+  # 1️⃣ BUILD & TEST
   # =========================
   build-test:
     name: Build & Test with Postgres & Redis
@@ -40,37 +43,30 @@ jobs:
           --health-retries=5
 
     env:
-      # APP
       APP_PORT: 8080
 
-      # DB
       DB_HOST: localhost
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: storeDB
 
-      # JWT
       JWT_SECRET: testsecret
 
-      # REDIS
       REDIS_ADDR: localhost:6379
       REDIS_PASSWORD: ""
 
-      # SMTP (DUMMY – test tidak kirim email beneran)
       SMTP_HOST: smtp.test.com
       SMTP_PORT: 587
       SMTP_EMAIL: test@test.com
       SMTP_PASSWORD: dummy
 
-      # MIDTRANS (DUMMY)
       MIDTRANS_SERVER_KEY: dummy
       MIDTRANS_CLIENT_KEY: dummy
       MIDTRANS_BASE_URL: https://api.sandbox.midtrans.com
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -84,24 +80,19 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
 
       - name: Install dependencies
         run: go mod download
 
       - name: Wait for Postgres
         run: |
-          until pg_isready -h localhost -p 5432; do
-            sleep 1
-          done
+          until pg_isready -h localhost -p 5432; do sleep 1; done
 
       - name: Run tests
         run: go test ./...
 
-      - name: Build application
+      - name: Build binary
         run: go build -o app ./cmd/server
-
 
   # =========================
   # 2️⃣ DOCKER BUILD & PUSH
@@ -116,29 +107,26 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image
-        run: |
-          docker build \
-            -t ghcr.io/${{ github.repository }}/store-backend:latest \
-            .
-
-      - name: Push Docker image
-        run: |
-          docker push ghcr.io/${{ github.repository }}/store-backend:latest
-
+      - name: Build & Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # =========================
-  # 3️⃣ DEPLOY TO VPS (OPTIONAL)
+  # 3️⃣ DEPLOY TO VPS
   # =========================
   deploy:
     name: Deploy to VPS
@@ -154,7 +142,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            docker pull ghcr.io/${{ github.repository }}/store-backend:latest
+            docker pull ${{ env.IMAGE_NAME }}:latest
 
             docker stop store-backend || true
             docker rm store-backend || true
@@ -163,4 +151,4 @@ jobs:
               --name store-backend \
               --env-file /opt/store-backend/.env \
               -p 8080:8080 \
-              ghcr.io/${{ github.repository }}/store-backend:latest
+              ${{ env.IMAGE_NAME }}:latest
