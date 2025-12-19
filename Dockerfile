@@ -33,9 +33,6 @@ RUN apk add --no-cache ca-certificates
 # Copy binary
 COPY --from=builder /app/app .
 
-# Copy assets (logo invoice)
-COPY assets ./assets
-
 # Create invoices dir
 RUN mkdir -p invoices
 

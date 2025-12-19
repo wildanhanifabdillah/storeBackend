@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gorm.io/gorm"
 
 	"github.com/wildanhanifabdillah/storeBackend/internal/handlers"
@@ -11,6 +12,7 @@ import (
 func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 	r.GET("/health", handlers.HealthCheck())
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	api := r.Group("/api/v1")
 
