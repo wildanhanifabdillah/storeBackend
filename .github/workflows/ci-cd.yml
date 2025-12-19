@@ -128,27 +128,27 @@ jobs:
   # =========================
   # 3️⃣ DEPLOY TO VPS
   # =========================
-  deploy:
-    name: Deploy to VPS
-    needs: docker
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+  # deploy:
+  #   name: Deploy to VPS
+  #   needs: docker
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
 
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            docker pull ${{ env.IMAGE_NAME }}:latest
+  #   steps:
+  #     - name: Deploy via SSH
+  #       uses: appleboy/ssh-action@v1.0.0
+  #       with:
+  #         host: ${{ secrets.VPS_HOST }}
+  #         username: ${{ secrets.VPS_USER }}
+  #         key: ${{ secrets.VPS_SSH_KEY }}
+  #         script: |
+  #           docker pull ${{ env.IMAGE_NAME }}:latest
 
-            docker stop store-backend || true
-            docker rm store-backend || true
+  #           docker stop store-backend || true
+  #           docker rm store-backend || true
 
-            docker run -d \
-              --name store-backend \
-              --env-file /opt/store-backend/.env \
-              -p 8080:8080 \
-              ${{ env.IMAGE_NAME }}:latest
+  #           docker run -d \
+  #             --name store-backend \
+  #             --env-file /opt/store-backend/.env \
+  #             -p 8080:8080 \
+  #             ${{ env.IMAGE_NAME }}:latest
