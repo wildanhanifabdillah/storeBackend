@@ -46,7 +46,7 @@ func seedGamesAndPackages(db *gorm.DB) {
 	ml := models.Game{
 		Name:     "Mobile Legends",
 		Code:     "ml",
-		ImageURL: "https://www.ggwp.id/esports/moba/fakta-game-ml-00-s0rct-d5v1w1",
+		ImageURL: "https://image.ggwp.id/post/20250305/1-50-640x360.jpg?tr=w-1200,f-webp,q-75&width=1200&format=webp&quality=75",
 	}
 	db.Create(&ml)
 
@@ -61,7 +61,7 @@ func seedGamesAndPackages(db *gorm.DB) {
 	ff := models.Game{
 		Name:     "Free Fire",
 		Code:     "ff",
-		ImageURL: "https://www.bluestacks.com/id/blog/game-guides/free-fire-battlegrounds/ff-tier-list-id.html",
+		ImageURL: "https://cdn-www.bluestacks.com/bs-images/hmhtt654.jpg",
 	}
 	db.Create(&ff)
 
