@@ -1,10 +1,12 @@
-name: Go CI/CD Pipeline (Postgres + Redis)
+name: Go CI/CD Pipeline (Final)
 
 on:
   push:
     branches: ["main"]
-  pull_request:
-    branches: ["main"]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
 
 env:
   IMAGE_NAME: ghcr.io/wildanhanifabdillah/storebackend
@@ -14,7 +16,6 @@ jobs:
   # 1️⃣ BUILD & TEST
   # =========================
   build-test:
-    name: Build & Test with Postgres & Redis
     runs-on: ubuntu-latest
 
     services:
@@ -42,63 +43,21 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
-    env:
-      APP_PORT: 8080
-
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: storeDB
-
-      JWT_SECRET: testsecret
-
-      REDIS_ADDR: localhost:6379
-      REDIS_PASSWORD: ""
-
-      SMTP_HOST: smtp.test.com
-      SMTP_PORT: 587
-      SMTP_EMAIL: test@test.com
-      SMTP_PASSWORD: dummy
-
-      MIDTRANS_SERVER_KEY: dummy
-      MIDTRANS_CLIENT_KEY: dummy
-      MIDTRANS_BASE_URL: https://api.sandbox.midtrans.com
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: "1.25.4"
 
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-
-      - name: Install dependencies
-        run: go mod download
-
-      - name: Wait for Postgres
-        run: |
-          until pg_isready -h localhost -p 5432; do sleep 1; done
-
-      - name: Run tests
-        run: go test ./...
-
-      - name: Build binary
-        run: go build -o app ./cmd/server
+      - run: go mod download
+      - run: go test ./...
+      - run: go build -o app ./cmd/server
 
   # =========================
-  # 2️⃣ DOCKER BUILD & PUSH
+  # 2️⃣ BUILD & PUSH IMAGE
   # =========================
   docker:
-    name: Build & Push Docker Image
     needs: build-test
     runs-on: ubuntu-latest
 
@@ -109,17 +68,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login to GHCR
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push Docker Image
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
         with:
-          context: .
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:latest
@@ -128,27 +84,19 @@ jobs:
   # =========================
   # 3️⃣ DEPLOY TO VPS
   # =========================
-  # deploy:
-  #   name: Deploy to VPS
-  #   needs: docker
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #     - name: Deploy via SSH
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.VPS_HOST }}
-  #         username: ${{ secrets.VPS_USER }}
-  #         key: ${{ secrets.VPS_SSH_KEY }}
-  #         script: |
-  #           docker pull ${{ env.IMAGE_NAME }}:latest
-
-  #           docker stop store-backend || true
-  #           docker rm store-backend || true
-
-  #           docker run -d \
-  #             --name store-backend \
-  #             --env-file /opt/store-backend/.env \
-  #             -p 8080:8080 \
-  #             ${{ env.IMAGE_NAME }}:latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /var/www/storeBackend
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
