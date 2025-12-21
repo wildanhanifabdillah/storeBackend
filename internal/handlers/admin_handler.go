@@ -58,6 +58,71 @@ func AdminGetTransactions(db *gorm.DB) gin.HandlerFunc {
 
 func CreateGame(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "CreateGame OK"})
+
+		name := c.PostForm("name")
+		code := c.PostForm("code")
+
+		if name == "" || code == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "name and code are required",
+			})
+			return
+		}
+
+		// cek unik code
+		var count int64
+		db.Model(&models.Game{}).
+			Where("code = ?", code).
+			Count(&count)
+
+		if count > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "game code already exists",
+			})
+			return
+		}
+
+		fileHeader, err := c.FormFile("image")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "image is required",
+			})
+			return
+		}
+
+		file, err := fileHeader.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "failed to open image",
+			})
+			return
+		}
+		defer file.Close()
+
+		imageURL, err := services.UploadImage(file, "games")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "failed to upload image",
+			})
+			return
+		}
+
+		game := models.Game{
+			Name:     name,
+			Code:     code,
+			ImageURL: imageURL,
+			IsActive: true,
+		}
+
+		if err := db.Create(&game).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "failed to create game",
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"data": game,
+		})
 	}
 }
