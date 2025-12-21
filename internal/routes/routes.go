@@ -31,7 +31,14 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 	admin.Use(middlewares.AuthMiddleware())
 	admin.GET("/transactions", handlers.AdminGetTransactions(db))
+	admin.GET("/games", handlers.AdminListGames(db))
 	admin.POST("/games", handlers.CreateGame(db))
+	admin.PUT("/games/:id", handlers.UpdateGame(db))
+	admin.DELETE("/games/:id", handlers.DeleteGame(db))
+	admin.GET("/games/:id/packages", handlers.AdminListPackages(db))
+	admin.POST("/games/:id/packages", handlers.AdminCreatePackage(db))
+	admin.PUT("/packages/:id", handlers.AdminUpdatePackage(db))
+	admin.DELETE("/packages/:id", handlers.AdminDeletePackage(db))
 	admin.GET("/invoices/:order_id", handlers.AdminDownloadInvoice())
 
 }
