@@ -102,7 +102,7 @@ jobs:
           script: |
             cd ${{ secrets.VPS_PATH }}
             git config --global --add safe.directory /var/www/storeBackend
-            git pull
+            git pull origin main
             echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USER --password-stdin
             docker compose pull
             docker compose up -d
