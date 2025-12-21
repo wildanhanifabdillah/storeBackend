@@ -91,6 +91,9 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -98,6 +101,8 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             cd ${{ secrets.VPS_PATH }}
+            git pull
+            echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USER --password-stdin
             docker compose pull
             docker compose up -d
             docker image prune -f
